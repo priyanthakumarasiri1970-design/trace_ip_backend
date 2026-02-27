@@ -19,14 +19,30 @@ app.use(express.json())
 const PORT = process.env.PORT || 4000
 const MONGO_URI = process.env.MONGO_URI
 
+// Root route
 app.get('/', (req, res) => {
     res.send('Server is running successfully!');
+});
+
+// Health check route
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        message: 'Server is healthy',
+        timestamp: new Date()
+    });
 });
 
 // Routes
 app.use('/', locationRoute)
 
-// Database Connection
+// ✅ Define cached variable for MongoDB connection (Vercel serverless)
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
 // MongoDB connection function (Vercel serverless)
 async function connectDB() {
     if (cached.conn) {
@@ -58,6 +74,7 @@ async function connectDB() {
         }).catch(err => {
             console.error("❌ MongoDB Connection Error:", err);
             console.error("Error details:", err.message);
+            cached.promise = null;
             throw err;
         });
     }
@@ -66,11 +83,31 @@ async function connectDB() {
     return cached.conn;
 }
 
-// Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
+// ✅ Vercel serverless function handler
+export default async function handler(req, res) {
+    try {
+        // Connect to database for every request
+        await connectDB();
+        
+        // Handle the request with Express
+        return app(req, res);
+    } catch (error) {
+        console.error('❌ Handler Error:', error);
+        
+        res.status(500).json({ 
+            message: 'Database connection failed',
+            error: error.message
+        });
+    }
+}
 
-})
-
-
-
+// ✅ For local development only (not used by Vercel)
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 Local server running on port ${PORT}`)
+        // Connect to DB for local development
+        connectDB().catch(err => {
+            console.error("❌ Local DB connection failed:", err.message);
+        });
+    });
+}
