@@ -15,6 +15,10 @@ app.use(express.json())
 const PORT = process.env.PORT || 4000
 const MONGO_URI = process.env.MONGO_URI
 
+app.get('/', (req, res) => {
+    res.send('Server is running successfully!');
+});
+
 // Routes
 app.use('/', locationRoute)
 
@@ -26,4 +30,5 @@ mongoose.connect(MONGO_URI)
 // Start Server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
+
 })
