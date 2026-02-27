@@ -27,14 +27,50 @@ app.get('/', (req, res) => {
 app.use('/', locationRoute)
 
 // Database Connection
-mongoose.connect(MONGO_URI)
-    .then(() => console.log("Database Connected"))
-    .catch((err) => console.log(err))
+// MongoDB connection function (Vercel serverless)
+async function connectDB() {
+    if (cached.conn) {
+        console.log("✅ Using cached MongoDB connection");
+        return cached.conn;
+    }
+
+    if (!cached.promise) {
+        const MONGO_URI = process.env.MONGO_URI;
+        
+        if (!MONGO_URI) {
+            console.error("❌ MONGO_URI is not defined");
+            throw new Error('MONGO_URI is not defined');
+        }
+
+        console.log("🔄 Connecting to MongoDB...");
+        console.log("MONGO_URI starts with:", MONGO_URI.substring(0, 20) + "...");
+        
+        cached.promise = mongoose.connect(MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000,
+            connectTimeoutMS: 10000,
+        }).then((mongoose) => {
+            console.log("✅ MongoDB Connected Successfully!");
+            console.log("Database:", mongoose.connection.name);
+            console.log("Host:", mongoose.connection.host);
+            return mongoose;
+        }).catch(err => {
+            console.error("❌ MongoDB Connection Error:", err);
+            console.error("Error details:", err.message);
+            throw err;
+        });
+    }
+    
+    cached.conn = await cached.promise;
+    return cached.conn;
+}
 
 // Start Server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 
 })
+
 
 
