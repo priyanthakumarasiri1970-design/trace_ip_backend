@@ -2,7 +2,7 @@ import express from 'express'
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import cors from 'cors'
-import locationRoute from '../routes/locationRoute.js'
+import locationRoute from './routes/locationRoute.js'
 
 dotenv.config()
 
@@ -32,3 +32,4 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 
 })
+
