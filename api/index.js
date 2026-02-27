@@ -17,7 +17,6 @@ app.use(cors({
 app.use(express.json())
 
 const PORT = process.env.PORT || 4000
-const MONGO_URI = process.env.MONGO_URI
 
 // Root route
 app.get('/', (req, res) => {
@@ -36,14 +35,14 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/', locationRoute)
 
-// ✅ Define cached variable for MongoDB connection (Vercel serverless)
+// Define cached variable for MongoDB connection
 let cached = global.mongoose;
 
 if (!cached) {
     cached = global.mongoose = { conn: null, promise: null };
 }
 
-// MongoDB connection function (Vercel serverless)
+// ✅ නිවැරදි MongoDB connection function (Mongoose 7+)
 async function connectDB() {
     if (cached.conn) {
         console.log("✅ Using cached MongoDB connection");
@@ -61,9 +60,8 @@ async function connectDB() {
         console.log("🔄 Connecting to MongoDB...");
         console.log("MONGO_URI starts with:", MONGO_URI.substring(0, 20) + "...");
         
+        // ✅ Mongoose 7+ සඳහා options ඉවත් කරන්න
         cached.promise = mongoose.connect(MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000,
             connectTimeoutMS: 10000,
         }).then((mongoose) => {
@@ -83,17 +81,13 @@ async function connectDB() {
     return cached.conn;
 }
 
-// ✅ Vercel serverless function handler
+// Vercel serverless function handler
 export default async function handler(req, res) {
     try {
-        // Connect to database for every request
         await connectDB();
-        
-        // Handle the request with Express
         return app(req, res);
     } catch (error) {
         console.error('❌ Handler Error:', error);
-        
         res.status(500).json({ 
             message: 'Database connection failed',
             error: error.message
@@ -101,11 +95,10 @@ export default async function handler(req, res) {
     }
 }
 
-// ✅ For local development only (not used by Vercel)
+// For local development
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
         console.log(`🚀 Local server running on port ${PORT}`)
-        // Connect to DB for local development
         connectDB().catch(err => {
             console.error("❌ Local DB connection failed:", err.message);
         });
